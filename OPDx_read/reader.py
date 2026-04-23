@@ -1,22 +1,20 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Thu May  5 20:41:38 2022
+#!/usr/bin/env python3
+"""Reader for the proprietary OPDx file format used by Bruker Dektak
+profilometers."""
 
-@author: usera
-"""
+import ctypes as ct
+import logging
+import struct
 
 import numpy as np
-import struct
-import ctypes as ct
-import matplotlib.pylab as plt
 
-MAGIC=b'VCA DATA\x01\x00\x00U' #This sequence is the beginning of each file
-MAGIC_SIZE=12
-DEBUG=False
+logger = logging.getLogger(__name__)
+
+MAGIC = b'VCA DATA\x01\x00\x00U'  # This sequence is the beginning of each file
+MAGIC_SIZE = 12
 
 class DektakItem:
-    
+
     def __init__(self, name=None, data_type=None, data=None):
         self.name=name
         self.data_type=data_type
@@ -49,10 +47,10 @@ class DektakLoad:
                     'DEKTAK_TERMINATOR'   : 0x7f # Always the last item.
                                                    #Usually a couple of 0xff bytes inside. */
                                                    })
-    
+
     inv_map_data_types = {v: k for k, v in data_types.items()}
-    
-    
+
+
     def __init__(self,filename):
         self.filename=filename
         self.items=[]
@@ -65,7 +63,7 @@ class DektakLoad:
             self.eof=f.tell()
             f.seek(0,0)
         self.read()
-    
+
     def read_varlen(self, f):
         length=int.from_bytes(f.read(1),"big")
         if length==1:
@@ -75,9 +73,9 @@ class DektakLoad:
         elif length==4:
             return int.from_bytes(f.read(4),"big")
         else:
-            print('The varlength format was not respected')
+            logger.warning("varlen format not respected (got length=%d)", length)
             return -1
-    
+
     def read_structured(self, item, f):
         self.read_varlen(f)
         item.data=dict()
@@ -88,7 +86,7 @@ class DektakLoad:
             last_item=self.read_item(f)
         self.terminator=False
         return item
-    
+
     def read_name(self, f):
         data=f.read(4)
         length=struct.unpack('i',data)[0]
@@ -97,17 +95,16 @@ class DektakLoad:
             return raw.decode('utf-8')
         except UnicodeDecodeError:
             return raw.decode('latin-1', errors='replace')
-            
 
-    
+
+
     def read_item(self, f):
         if f.tell()==self.eof:
             return None
         item=DektakItem()
         item.name=self.read_name(f)
         datatype=f.read(1)
-        if DEBUG:
-            print('the datatype of this item is: {:}'.format(datatype))
+        logger.debug("datatype of this item is: %r", datatype)
         item.data_type=int.from_bytes(datatype, "big")
         if item.data_type==DektakLoad.data_types['DEKTAK_BOOLEAN']:
             item.data=f.read(1)
@@ -140,7 +137,7 @@ class DektakLoad:
             else:
                 item.data['strings']=[]
         elif item.data_type==DektakLoad.data_types['DEKTAK_DOUBLE_ARRAY']:
-            
+
             item.data=dict()
             item.data['datatype']=self.read_name(f)
             #First try to skip 8, then 10
@@ -214,7 +211,7 @@ class DektakLoad:
                 N=item.data['length']
                 N=item.data['count']
                 item.data['data']=np.frombuffer(f.read(N*8), dtype=float)
-                
+
         elif item.data_type==DektakLoad.data_types['DEKTAK_ANON_MATRIX']:
             item.data=dict()
             item.data['name']=self.read_name(f)
@@ -222,22 +219,25 @@ class DektakLoad:
             item.data['yres']=struct.unpack('I',f.read(4))[0]
             item.data['xres']=struct.unpack('I',f.read(4))[0]
             if item.data['size']<2*ct.sizeof(ct.c_uint32):
-                print('PROBLEM')
+                logger.warning(
+                    "DEKTAK_ANON_MATRIX size %d is smaller than 2*uint32",
+                    item.data['size'],
+                )
             item.data['size']-=2*ct.sizeof(ct.c_uint32)
             N=item.data['xres']*item.data['yres']
             data=f.read(4*N)
             item.data['data']=np.reshape(np.frombuffer(data,
                      dtype="float32"), (item.data['yres'],
                                     item.data['xres']))
-                                        
+
         elif item.data_type==DektakLoad.data_types['DEKTAK_VECTOR']:
             item.data=dict()
             item.data['type']=self.read_name(f)
             item.data['size']=self.read_varlen(f)
             item.data['coords']=f.read(item.data['size'])
-            
+
         elif item.data_type==DektakLoad.data_types['DEKTAK_MATRIX']:
-            
+
             item.data=dict()
             item.data['name']=self.read_name(f)
             item.data['size']=struct.unpack('I',f.read(4))[0]
@@ -248,7 +248,10 @@ class DektakLoad:
                 item.data['xres']=struct.unpack('I',f.read(4))[0]
                 item.data['yres']=struct.unpack('I',f.read(4))[0]
                 if item.data['size']<2*ct.sizeof(ct.c_uint32):
-                    print('PROBLEM')
+                    logger.warning(
+                        "DEKTAK_MATRIX size %d is smaller than 2*uint32",
+                        item.data['size'],
+                    )
                 item.data['size']-=2*ct.sizeof(ct.c_uint32)
             else:
                 self.read_name(f)
@@ -264,16 +267,18 @@ class DektakLoad:
         elif item.data_type==DektakLoad.data_types['DEKTAK_RAW_DATA_2D']:
             item=self.read_structured(item, f)
         else:
-            print('unknown data_type')
-            f.seek(-200,1)
-            print(f.read(1000))
-            print(item.data_type)
-        if DEBUG:
-            print('{:},{:},{:}===>>>>{:} ; {:}'.format(item.data_type,
-              f.tell(), datatype,
-              item.name, item.data))
+            f.seek(-200, 1)
+            context = f.read(1000)
+            logger.error(
+                "unknown data_type %r (offset %d) — surrounding bytes: %r",
+                item.data_type, f.tell(), context,
+            )
+        logger.debug(
+            "%s,%s,%s===>>>>%s ; %s",
+            item.data_type, f.tell(), datatype, item.name, item.data,
+        )
         return item
-    
+
     def read_until(self, f, limit='\x06\x00\x00\x00Extent'):
         string=b''
         N=len(limit)
@@ -285,8 +290,8 @@ class DektakLoad:
             else:
                 string+=f.read(1)
         return None
-            
-        
+
+
     def read(self):
         with open(self.filename, 'rb') as f:
             while(f.tell()!=MAGIC_SIZE):
@@ -294,8 +299,8 @@ class DektakLoad:
             while(len(self.items)<10):
                 item=self.read_item(f)
                 self.items.append(item)
-    
-    
+
+
     def get_data_1D(self):
         x,y,scale, divisor=None, None, None, None
         for item in self.items:
@@ -319,8 +324,8 @@ class DektakLoad:
             return x/divisor, y*scale/divisor
         else:
             return None, None
-    
-    
+
+
     def get_data_2D(self, plot=True):
         for item in self.items:
             if item is not None:
@@ -353,7 +358,11 @@ class DektakLoad:
                                         subsubitem.data['unit_symbol_y'])
                     break
             if plot:
-            
+                # matplotlib is only needed when the caller asks for a plot,
+                # so import lazily to keep `from OPDx_read.reader import ...`
+                # cheap for non-plotting users.
+                import matplotlib.pylab as plt
+
                 plt.imshow(mat.data['data']*scale.data['value'],
                            extent=[0,dim2.data['value'],
                                    0,dim1.data['value']])
@@ -367,8 +376,8 @@ class DektakLoad:
             return (xs, ys, zs)
         else:
             return None, None, None
-    
-    
+
+
     def get_metadata(self):
         for item in self.items:
             if item is not None:
