@@ -4,13 +4,26 @@ OPDx_read is a small package that reads the proprietary file format OPDx, that i
 
 ## Installation
 
-The installation is straightforward:
+Install directly from this fork with pip:
 
-- clone the repository, by opening a command line and typing `git clone git@github.com:ThibaultCapelle/OPDx_read.git`
+```
+pip install git+https://github.com/soosub/OPDx_read.git
+```
 
-- enter the repository, by typing `cd OPDx_read`
+Or, with [uv](https://docs.astral.sh/uv/), declare it as a git source in your
+`pyproject.toml`:
 
-- install the repository, by typing `python setup.py install`
+```toml
+[tool.uv.sources]
+opdx-read = { git = "https://github.com/soosub/OPDx_read.git", branch = "master" }
+```
+
+Plotting helpers in `get_data_2D(plot=True)` need `matplotlib` — install
+the optional `[plot]` extra to pull it in:
+
+```
+pip install "OPDx_read[plot] @ git+https://github.com/soosub/OPDx_read.git"
+```
 
 ## Basic use
 
