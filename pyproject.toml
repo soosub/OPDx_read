@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "OPDx_read"
+version = "1.0"
+description = "Reader for the proprietary OPDx file format used by Bruker Dektak profilometers."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [
+    { name = "Thibault Capelle" },
+    { name = "Joost Bus" },
+]
+keywords = ["dektak", "profilometer", "opdx", "bruker"]
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib"]
+
+[project.urls]
+Homepage = "https://github.com/soosub/OPDx_read"
+Source = "https://github.com/soosub/OPDx_read"
+Upstream = "https://github.com/opruvd/OPDx_read"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff"]
+
+[tool.setuptools]
+packages = ["OPDx_read"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # isort
+    "B",       # flake8-bugbear
+    "UP",      # pyupgrade
+]
+ignore = [
+    "E501",  # line length is enforced by the formatter, not the linter
+    "E741",  # ambiguous variable names (l, I, N) are common in parser/math code
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
