@@ -92,7 +92,11 @@ class DektakLoad:
     def read_name(self, f):
         data=f.read(4)
         length=struct.unpack('i',data)[0]
-        return f.read(length).decode()
+        raw=f.read(length)
+        try:
+            return raw.decode('utf-8')
+        except UnicodeDecodeError:
+            return raw.decode('latin-1', errors='replace')
             
 
     
