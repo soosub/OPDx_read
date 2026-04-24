@@ -1,4 +1,18 @@
 *.pyc
+__pycache__/
 build/
 dist/
-OPDx_read.egg-info/
+*.egg-info/
+
+# uv (this is a library — lockfile is per-consumer, not committed here)
+.venv/
+uv.lock
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+pytest-cache-files-*/
+
+# OS junk
+.DS_Store
+Thumbs.db
