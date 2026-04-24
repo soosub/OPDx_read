@@ -325,7 +325,7 @@ class DektakLoad:
         else:
             return None, None
 
-    def get_data_2D(self, plot=True):
+    def get_data_2D(self, plot=False):
         for item in self.items:
             if item is not None:
                 if item.name == "2D_Data":
