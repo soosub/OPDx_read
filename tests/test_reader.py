@@ -55,11 +55,7 @@ def test_get_metadata_returns_dict(loader):
 def test_module_import_does_not_eagerly_load_matplotlib():
     """`from OPDx_read.reader import DektakLoad` must work without matplotlib
     installed — guarantees the lazy import in get_data_2D stays lazy."""
-    code = (
-        "import sys; "
-        "from OPDx_read.reader import DektakLoad; "
-        "print('matplotlib' in sys.modules)"
-    )
+    code = "import sys; from OPDx_read.reader import DektakLoad; print('matplotlib' in sys.modules)"
     out = subprocess.check_output([sys.executable, "-c", code], text=True)
     assert out.strip() == "False"
 
@@ -67,12 +63,12 @@ def test_module_import_does_not_eagerly_load_matplotlib():
 def test_read_name_falls_back_to_latin1_on_invalid_utf8():
     """Some legacy .OPDx files carry latin-1 bytes in name fields; read_name
     must not raise UnicodeDecodeError."""
-    payload = struct.pack('i', 4) + b'\xe9\xe8\xe7\xe6'
+    payload = struct.pack("i", 4) + b"\xe9\xe8\xe7\xe6"
     buf = io.BytesIO(payload)
     # read_name doesn't depend on instance state, so skip __init__ to avoid
     # opening a real file.
     loader = object.__new__(DektakLoad)
-    assert loader.read_name(buf) == '\xe9\xe8\xe7\xe6'
+    assert loader.read_name(buf) == "\xe9\xe8\xe7\xe6"
 
 
 def test_logger_silent_for_clean_fixture(caplog):
