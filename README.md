@@ -15,7 +15,7 @@ Or, with [uv](https://docs.astral.sh/uv/), declare it as a git source in your
 
 ```toml
 [tool.uv.sources]
-opdx-read = { git = "https://github.com/soosub/OPDx_read.git", branch = "master" }
+opdx-read = { git = "https://github.com/soosub/OPDx_read.git", branch = "main" }
 ```
 
 Plotting helpers in `get_data_2D(plot=True)` need `matplotlib` — install
